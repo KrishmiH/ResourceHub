@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { CalendarDays, Plus, Clock3 } from "lucide-react";
+import { CalendarDays, Plus, Clock3, Pencil } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import CancelReservationButton from "./cancel-button";
 import DeleteReservationButton from "./delete-button";
@@ -139,7 +139,17 @@ async function ReservationsContent() {
                       <td className="px-6 py-4">
                         <div className="flex flex-col items-start gap-2">
                           {reservation.status === "CONFIRMED" && (
-                            <CancelReservationButton id={reservation.id} />
+                            <>
+                              <Link
+                                href={`/reservations/${reservation.id}/edit`}
+                                className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 px-2.5 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                              >
+                                <Pencil size={14} />
+                                Edit
+                              </Link>
+
+                              <CancelReservationButton id={reservation.id} />
+                            </>
                           )}
 
                           <DeleteReservationButton id={reservation.id} />
