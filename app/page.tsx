@@ -125,7 +125,7 @@ async function DashboardContent() {
                     {item.label}
                     {item.label === "Reservations" && (
                       <span className="ml-auto rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
-                        0
+                        {dashboardData.reservationCount}
                       </span>
                     )}
                   </Link>
@@ -353,35 +353,74 @@ async function DashboardContent() {
               </div>
 
               {/* Empty state */}
-              <div className="px-5 py-14 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500">
-                  <CalendarDays size={22} strokeWidth={1.6} />
+              {/* Recent reservations */}
+              {dashboardData.recentReservations.length > 0 ? (
+                <div>
+                  {dashboardData.recentReservations.map((reservation) => (
+                    <div
+                      key={reservation.id}
+                      className="grid gap-3 border-b border-slate-100 px-5 py-4 last:border-b-0 md:grid-cols-[1.5fr_1.2fr_1fr_1fr] md:items-center md:gap-4"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-slate-800">
+                          {reservation.resource.name}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {reservation.resource.category}
+                        </p>
+                      </div>
+
+                      <p className="text-sm text-slate-600">
+                        {reservation.reservedBy}
+                      </p>
+
+                      <p className="text-sm text-slate-600">
+                        {new Date(reservation.startTime).toLocaleString(undefined, {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </p>
+
+                      <div>
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                            reservation.status === "CONFIRMED"
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {reservation.status === "CONFIRMED"
+                            ? "Confirmed"
+                            : "Cancelled"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
+              ) : (
+                <div className="px-5 py-14 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500">
+                    <CalendarDays size={22} strokeWidth={1.6} />
+                  </div>
 
-                <h4 className="mt-4 text-sm font-semibold text-slate-800">
-                  No reservations yet
-                </h4>
+                  <h4 className="mt-4 text-sm font-semibold text-slate-800">
+                    No reservations yet
+                  </h4>
 
-                <p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-slate-500">
-                  Reservations will appear here when someone books a resource.
-                  Create your first reservation to get started.
-                </p>
+                  <p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-slate-500">
+                    Reservations will appear here when someone books a resource.
+                    Create your first reservation to get started.
+                  </p>
 
-                <Link
-                  href="/reservations/new"
-                  className="mt-5 inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                >
-                  <Plus size={16} />
-                  Create reservation
-                </Link>
-              </div>
-
-              <div className="border-t border-slate-100 bg-slate-50/70 px-5 py-3">
-                <p className="text-xs text-slate-500">
-                  Reservation data will be displayed here once booking
-                  functionality is connected.
-                </p>
-              </div>
+                  <Link
+                    href="/reservations/new"
+                    className="mt-5 inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  >
+                    <Plus size={16} />
+                    Create reservation
+                  </Link>
+                </div>
+              )}
             </section>
 
             {/* Resource categories */}

@@ -17,6 +17,7 @@ export async function getDashboardStats() {
     cancelledReservations,
     todayReservations,
     upcomingReservations,
+    recentReservations,
   ] = await Promise.all([
     prisma.resource.count(),
 
@@ -52,6 +53,19 @@ export async function getDashboardStats() {
         },
       },
     }),
+
+    prisma.reservation.findMany({
+      take: 5,
+      orderBy: { createdAt: "desc" },
+      include: {
+        resource: {
+          select: {
+            name: true,
+            category: true,
+          },
+        },
+      },
+    }),
   ]);
 
   return {
@@ -62,5 +76,7 @@ export async function getDashboardStats() {
     cancelledReservations,
     todayReservations,
     upcomingReservations,
+    reservationCount: totalReservations,
+    recentReservations,
   };
 }
