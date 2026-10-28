@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { CalendarDays, Plus, Clock3 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import CancelReservationButton from "./cancel-button";
+import DeleteReservationButton from "./delete-button";
 
 export default function ReservationsPage() {
   return (
@@ -136,9 +137,13 @@ async function ReservationsContent() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        {reservation.status === "CONFIRMED" && (
+                        <div className="flex flex-col items-start gap-2">
+                          {reservation.status === "CONFIRMED" && (
                             <CancelReservationButton id={reservation.id} />
-                        )}
+                          )}
+
+                          <DeleteReservationButton id={reservation.id} />
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -46,3 +46,39 @@ export async function PATCH(
     );
   }
 }
+
+
+export async function DELETE(
+  _request: Request,
+  { params }: RouteContext
+) {
+  try {
+    const { id } = await params;
+
+    const reservation = await prisma.reservation.findUnique({
+      where: { id },
+    });
+
+    if (!reservation) {
+      return NextResponse.json(
+        { message: "Reservation not found." },
+        { status: 404 }
+      );
+    }
+
+    await prisma.reservation.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({
+      message: "Reservation deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Failed to delete reservation:", error);
+
+    return NextResponse.json(
+      { message: "Unable to delete reservation." },
+      { status: 500 }
+    );
+  }
+}
