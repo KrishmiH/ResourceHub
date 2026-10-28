@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { connection } from "next/server";
+import { Suspense } from "react";
+import { getDashboardStats } from "@/lib/dashboard";
 import {
   LayoutDashboard,
   Package,
@@ -9,7 +12,6 @@ import {
   Plus,
   ArrowUpRight,
   Clock3,
-  MapPin,
   ChevronRight,
   Filter,
   CalendarCheck,
@@ -18,32 +20,34 @@ import {
   Monitor,
 } from "lucide-react";
 
-const stats = [
-  {
-    label: "Total resources",
-    value: "0",
-    note: "Registered in the system",
-    icon: Package,
-  },
-  {
-    label: "Today's reservations",
-    value: "0",
-    note: "Scheduled for today",
-    icon: CalendarDays,
-  },
-  {
-    label: "Upcoming reservations",
-    value: "0",
-    note: "Confirmed bookings",
-    icon: CalendarCheck,
-  },
-  {
-    label: "Available resources",
-    value: "0",
-    note: "Ready to be reserved",
-    icon: Building2,
-  },
-];
+function createStats(data: Awaited<ReturnType<typeof getDashboardStats>>) {
+  return [
+    {
+      label: "Total resources",
+      value: String(data.totalResources),
+      note: "Registered in the system",
+      icon: Package,
+    },
+    {
+      label: "Today's reservations",
+      value: String(data.todayReservations),
+      note: "Scheduled for today",
+      icon: CalendarDays,
+    },
+    {
+      label: "Upcoming reservations",
+      value: String(data.upcomingReservations),
+      note: "Confirmed bookings",
+      icon: CalendarCheck,
+    },
+    {
+      label: "Available resources",
+      value: String(data.activeResources),
+      note: "Active resources",
+      icon: Building2,
+    },
+  ];
+}
 
 const navigation = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -58,6 +62,25 @@ const resourceTypes = [
 ];
 
 export default function DashboardPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#f7f8fa] text-sm text-slate-500">
+          Loading dashboard...
+        </div>
+      }
+    >
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+async function DashboardContent() {
+  await connection();
+
+  const dashboardData = await getDashboardStats();
+  const stats = createStats(dashboardData);
+
   return (
     <div className="min-h-screen bg-[#f7f8fa] text-slate-800">
       <div className="flex min-h-screen">
