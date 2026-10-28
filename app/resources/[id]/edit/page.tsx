@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Suspense } from "react";
 import { useEffect, useState, type FormEvent } from "react";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Trash2 } from "lucide-react";
 
 type Resource = {
   id: string;
@@ -43,6 +43,7 @@ function EditResourceContent() {
   const [isActive, setIsActive] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -104,6 +105,37 @@ function EditResourceContent() {
       setError("Unable to connect to the server.");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    const confirmed = window.confirm(
+      `Are you sure you want to permanently delete "${resource?.name}"? This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    setError("");
+    setIsDeleting(true);
+
+    try {
+      const response = await fetch(`/api/resources/${id}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.message || "Failed to delete resource.");
+        return;
+      }
+
+      router.push("/resources");
+      router.refresh();
+    } catch {
+      setError("Unable to connect to the server.");
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -250,22 +282,34 @@ function EditResourceContent() {
             </p>
           )}
 
-          <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
-            <Link
-              href="/resources"
-              className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 px-4 text-sm font-medium hover:bg-slate-50"
-            >
-              Cancel
-            </Link>
-
+          <div className="flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
             <button
-              type="submit"
-              disabled={isSaving}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-blue-700 px-4 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-60"
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting || isSaving}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-red-200 px-4 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <Save size={16} />
-              {isSaving ? "Saving..." : "Save changes"}
+              <Trash2 size={16} />
+              {isDeleting ? "Deleting..." : "Delete resource"}
             </button>
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row">
+              <Link
+                href="/resources"
+                className="inline-flex h-10 items-center justify-center rounded-md border border-slate-300 px-4 text-sm font-medium hover:bg-slate-50"
+              >
+                Cancel
+              </Link>
+
+              <button
+                type="submit"
+                disabled={isSaving || isDeleting}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-blue-700 px-4 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-60"
+              >
+                <Save size={16} />
+                {isSaving ? "Saving..." : "Save changes"}
+              </button>
+            </div>
           </div>
         </form>
       </div>

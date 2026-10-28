@@ -198,3 +198,53 @@ export async function PATCH(
     );
   }
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: RouteContext
+) {
+  try {
+    const { id } = await params;
+
+    const resource = await prisma.resource.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: { reservations: true },
+        },
+      },
+    });
+
+    if (!resource) {
+      return NextResponse.json(
+        { message: "Resource not found." },
+        { status: 404 }
+      );
+    }
+
+    if (resource._count.reservations > 0) {
+      return NextResponse.json(
+        {
+          message:
+            "This resource cannot be deleted because it has reservation history. Deactivate it instead.",
+        },
+        { status: 409 }
+      );
+    }
+
+    await prisma.resource.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({
+      message: "Resource deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Failed to delete resource:", error);
+
+    return NextResponse.json(
+      { message: "Unable to delete resource." },
+      { status: 500 }
+    );
+  }
+}
