@@ -1,19 +1,56 @@
-
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
+async function getAuthorizedReservation(id: string) {
+  const session = await auth();
+
+  if (!session?.user) {
+    return {
+      session: null,
+      reservation: null,
+    };
+  }
+
+  const isAdmin = session.user.role === "ADMIN";
+
+  const reservation = await prisma.reservation.findFirst({
+    where: {
+      id,
+      ...(isAdmin ? {} : { userId: session.user.id }),
+    },
+  });
+
+  return { session, reservation };
+}
+
 export async function GET(
   _request: Request,
-  { params }: RouteContext
+  context: RouteContext
 ) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
+    const { session, reservation } = await getAuthorizedReservation(id);
 
-    const reservation = await prisma.reservation.findUnique({
+    if (!session?.user) {
+      return NextResponse.json(
+        { message: "You must be logged in to view this reservation." },
+        { status: 401 }
+      );
+    }
+
+    if (!reservation) {
+      return NextResponse.json(
+        { message: "Reservation not found." },
+        { status: 404 }
+      );
+    }
+
+    const result = await prisma.reservation.findUnique({
       where: { id },
       include: {
         resource: {
@@ -26,14 +63,7 @@ export async function GET(
       },
     });
 
-    if (!reservation) {
-      return NextResponse.json(
-        { message: "Reservation not found." },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ reservation });
+    return NextResponse.json({ reservation: result });
   } catch (error) {
     console.error("Failed to fetch reservation:", error);
 
@@ -46,14 +76,18 @@ export async function GET(
 
 export async function PATCH(
   _request: Request,
-  { params }: RouteContext
+  context: RouteContext
 ) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
+    const { session, reservation } = await getAuthorizedReservation(id);
 
-    const reservation = await prisma.reservation.findUnique({
-      where: { id },
-    });
+    if (!session?.user) {
+      return NextResponse.json(
+        { message: "You must be logged in to cancel reservations." },
+        { status: 401 }
+      );
+    }
 
     if (!reservation) {
       return NextResponse.json(
@@ -72,6 +106,15 @@ export async function PATCH(
     const updatedReservation = await prisma.reservation.update({
       where: { id },
       data: { status: "CANCELLED" },
+      include: {
+        resource: {
+          select: {
+            name: true,
+            category: true,
+            location: true,
+          },
+        },
+      },
     });
 
     return NextResponse.json({ reservation: updatedReservation });
@@ -88,14 +131,18 @@ export async function PATCH(
 
 export async function DELETE(
   _request: Request,
-  { params }: RouteContext
+  context: RouteContext
 ) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
+    const { session, reservation } = await getAuthorizedReservation(id);
 
-    const reservation = await prisma.reservation.findUnique({
-      where: { id },
-    });
+    if (!session?.user) {
+      return NextResponse.json(
+        { message: "You must be logged in to delete reservations." },
+        { status: 401 }
+      );
+    }
 
     if (!reservation) {
       return NextResponse.json(
@@ -123,10 +170,33 @@ export async function DELETE(
 
 export async function PUT(
   request: Request,
-  { params }: RouteContext
+  context: RouteContext
 ) {
   try {
-    const { id } = await params;
+    const { id } = await context.params;
+    const { session, reservation } = await getAuthorizedReservation(id);
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { message: "You must be logged in to update reservations." },
+        { status: 401 }
+      );
+    }
+
+    if (!reservation) {
+      return NextResponse.json(
+        { message: "Reservation not found." },
+        { status: 404 }
+      );
+    }
+
+    if (reservation.status === "CANCELLED") {
+      return NextResponse.json(
+        { message: "Cancelled reservations cannot be edited." },
+        { status: 400 }
+      );
+    }
+
     const body: unknown = await request.json();
 
     if (!body || typeof body !== "object") {
@@ -183,24 +253,6 @@ export async function PUT(
       );
     }
 
-    const existingReservation = await prisma.reservation.findUnique({
-      where: { id },
-    });
-
-    if (!existingReservation) {
-      return NextResponse.json(
-        { message: "Reservation not found." },
-        { status: 404 }
-      );
-    }
-
-    if (existingReservation.status === "CANCELLED") {
-      return NextResponse.json(
-        { message: "Cancelled reservations cannot be edited." },
-        { status: 409 }
-      );
-    }
-
     const resource = await prisma.resource.findUnique({
       where: { id: resourceId },
       select: { id: true, isActive: true },
@@ -222,9 +274,9 @@ export async function PUT(
 
     const overlappingReservation = await prisma.reservation.findFirst({
       where: {
+        id: { not: id },
         resourceId,
         status: "CONFIRMED",
-        id: { not: id },
         startTime: { lt: endTime },
         endTime: { gt: startTime },
       },
@@ -233,10 +285,7 @@ export async function PUT(
 
     if (overlappingReservation) {
       return NextResponse.json(
-        {
-          message:
-            "This resource is already reserved during that time.",
-        },
+        { message: "This resource is already reserved during that time." },
         { status: 409 }
       );
     }

@@ -1,5 +1,6 @@
 
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 type RouteContext = {
@@ -12,6 +13,15 @@ export async function GET(
   { params }: RouteContext
 ) {
   try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { message: "You must be logged in to view resources." },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
 
     const resource = await prisma.resource.findUnique({
@@ -41,6 +51,22 @@ export async function PATCH(
   { params }: RouteContext
 ) {
   try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { message: "You must be logged in to update resources." },
+        { status: 401 }
+      );
+    }
+
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { message: "You do not have permission to update resources." },
+        { status: 403 }
+      );
+    }
+
     const { id } = await params;
     const body: unknown = await request.json();
 
@@ -204,6 +230,22 @@ export async function DELETE(
   { params }: RouteContext
 ) {
   try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { message: "You must be logged in to delete resources." },
+        { status: 401 }
+      );
+    }
+
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { message: "You do not have permission to delete resources." },
+        { status: 403 }
+      );
+    }
+    
     const { id } = await params;
 
     const resource = await prisma.resource.findUnique({

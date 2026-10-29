@@ -6,6 +6,8 @@ import { CalendarDays, Plus, Clock3, Pencil } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import CancelReservationButton from "./cancel-button";
 import DeleteReservationButton from "./delete-button";
+import { auth } from "@/auth";
+import { redirect } from "next/navigation";
 
 export default function ReservationsPage() {
   return (
@@ -24,7 +26,16 @@ export default function ReservationsPage() {
 async function ReservationsContent() {
   await connection();
 
+  const session = await auth();
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  const isAdmin = session.user.role === "ADMIN";
+
   const reservations = await prisma.reservation.findMany({
+    where: isAdmin ? {} : { userId: session.user.id },
     include: {
       resource: {
         select: {

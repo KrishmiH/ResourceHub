@@ -2,6 +2,9 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { getDashboardStats } from "@/lib/dashboard";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
+import SignOutButton from "@/components/SignOutButton";
 import {
   LayoutDashboard,
   Package,
@@ -78,6 +81,12 @@ export default function DashboardPage() {
 async function DashboardContent() {
   await connection();
 
+  const session = await auth();
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+  
   const dashboardData = await getDashboardStats();
   const stats = createStats(dashboardData);
 
@@ -208,8 +217,18 @@ async function DashboardContent() {
                   <Bell size={18} strokeWidth={1.8} />
                 </button>
 
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
-                  RH
+                <SignOutButton />
+
+                <div
+                  className="hidden h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700 sm:flex"
+                  title={session.user.name ?? "User"}
+                >
+                  {(session.user.name ?? "U")
+                    .split(" ")
+                    .map((part) => part[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
                 </div>
               </div>
             </div>
@@ -327,7 +346,7 @@ async function DashboardContent() {
                   </button>
 
                   <Link
-                    href="/reservations"
+                    href="/reservations/all"
                     className="inline-flex h-9 items-center gap-1 rounded-md px-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
                   >
                     View all

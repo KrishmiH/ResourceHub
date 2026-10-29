@@ -1,10 +1,22 @@
-
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { message: "You must be logged in to view reservations." },
+        { status: 401 }
+      );
+    }
+
+    const isAdmin = session.user.role === "ADMIN";
+
     const reservations = await prisma.reservation.findMany({
+      where: isAdmin ? {} : { userId: session.user.id },
       include: {
         resource: {
           select: {
@@ -32,6 +44,15 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { message: "You must be logged in to create reservations." },
+        { status: 401 }
+      );
+    }
+
     const body: unknown = await request.json();
 
     if (!body || typeof body !== "object") {
@@ -126,6 +147,7 @@ export async function POST(request: Request) {
     const reservation = await prisma.reservation.create({
       data: {
         resourceId,
+        userId: session.user.id,
         reservedBy,
         purpose,
         startTime,

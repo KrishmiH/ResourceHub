@@ -1,9 +1,19 @@
 
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { message: "You must be logged in to view resources." },
+        { status: 401 }
+      );
+    }
+
     const resources = await prisma.resource.findMany({
       orderBy: { createdAt: "desc" },
     });
@@ -21,6 +31,22 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const session = await auth();
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { message: "You must be logged in to create resources." },
+        { status: 401 }
+      );
+    }
+
+    if (session.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { message: "You do not have permission to create resources." },
+        { status: 403 }
+      );
+    }
+    
     const body: unknown = await request.json();
 
     if (
