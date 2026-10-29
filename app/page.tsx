@@ -56,6 +56,7 @@ const navigation = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Resources", href: "/resources", icon: Package },
   { label: "Reservations", href: "/reservations", icon: CalendarDays },
+  { label: "Calendar", href: "/calendar", icon: CalendarDays },
 ];
 
 const resourceTypes = [
