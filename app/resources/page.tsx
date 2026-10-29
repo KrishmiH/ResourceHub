@@ -28,8 +28,27 @@ export default function ResourcesPage() {
 async function ResourcesContent() {
   await connection();
 
+  const now = new Date();
+
   const resources = await prisma.resource.findMany({
     orderBy: { createdAt: "desc" },
+    include: {
+      reservations: {
+        where: {
+          status: "CONFIRMED",
+          endTime: {
+            gte: now,
+          },
+        },
+        orderBy: {
+          startTime: "asc",
+        },
+        select: {
+          startTime: true,
+          endTime: true,
+        },
+      },
+    },
   });
 
   return (
@@ -106,11 +125,27 @@ async function ResourcesContent() {
                     <th className="px-5 py-3 font-medium">Category</th>
                     <th className="px-5 py-3 font-medium">Location</th>
                     <th className="px-5 py-3 font-medium">Status</th>
+                    <th className="px-5 py-3 font-medium">Availability</th>
+                    <th className="px-5 py-3 font-medium">Next reservation</th>
                     <th className="px-5 py-3 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {resources.map((resource) => (
+                  {resources.map((resource) => {
+                    const currentReservation = resource.reservations.find(
+                      (reservation) =>
+                        reservation.startTime <= now &&
+                        reservation.endTime > now
+                    );
+
+                    const nextReservation = resource.reservations.find(
+                      (reservation) => reservation.startTime > now
+                    );
+
+                    const isAvailable =
+                      resource.isActive && !currentReservation;
+
+                    return (
                     <tr key={resource.id} className="hover:bg-slate-50">
                       <td className="px-5 py-4 font-medium text-slate-800">
                         {resource.name}
@@ -140,6 +175,45 @@ async function ResourcesContent() {
                           {resource.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
+                      
+                      <td className="px-5 py-4">
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                            !resource.isActive
+                              ? "bg-slate-100 text-slate-600"
+                              : isAvailable
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "bg-amber-50 text-amber-700"
+                          }`}
+                        >
+                          {!resource.isActive
+                            ? "Unavailable"
+                            : isAvailable
+                              ? "Available"
+                              : "Currently booked"}
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-4 text-slate-600">
+                        {nextReservation ? (
+                          <div>
+                            <p className="text-sm text-slate-800">
+                              {nextReservation.startTime.toLocaleDateString()}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              {nextReservation.startTime.toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">
+                            No upcoming reservations
+                          </span>
+                        )}
+                      </td>
+
                       <td className="px-5 py-4 text-right">
                         <Link
                           href={`/resources/${resource.id}/edit`}
@@ -150,7 +224,8 @@ async function ResourcesContent() {
                         </Link>
                       </td>
                     </tr>
-                  ))}
+                  );
+                  })}
                 </tbody>
               </table>
             </div>
